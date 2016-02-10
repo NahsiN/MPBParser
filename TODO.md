@@ -1,0 +1,5 @@
+- [x] MPBBandstructure class to load all the band data from mpb output
+- [x] readfield function to read fields from mpb output
+- [ ] plot the bands
+- [ ] plot the fields
+- [ ] read epsilon.h5 and plot

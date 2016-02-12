@@ -6,6 +6,7 @@ import re
 import csv
 import numpy as np
 import h5py
+import sys
 
 def strip_spaces(fields):
     ''' Strip spaces and newline characters from a list of strings '''
@@ -26,8 +27,7 @@ class MPBBandStructure:
         self.fname_mpb = out_file
         self.symm = symm
         #self.path = out_file.rstrip(re.search('[\w.]+.out', out_file).group())  # relies on file being named foo.out
-        # Unix paths [0:-1] ensures not to include filename. Spaces allowed?
-        self.path = '/'.join(out_file.split('/')[0:-1])
+        self.path = '/'.join(out_file.split('/')[0:-1])  # [0:-1] ensures not to include filename. Spaces allowed?
 
     def csvparser(self):
         """
@@ -136,7 +136,18 @@ class MPBBandStructure:
         self.vg = vg; self.vgmag = vgmag
         print('Parsing of csv files complete. New data attributes created!')
 
-class EMField():
+class h5Dataset:
+    def __init__(self, mpb_h5_fobj, dset):
+        self.dset = mpb_h5_fobj[dset]
+        self.h5_fobj = mpb_h5_fobj
+
+    def close(self):
+        self.h5_fobj.close()
+
+class EMField(h5Dataset):
+    """
+    Class for tensor components of the EM fields
+    """
     def __init__(self, mpb_h5_fobj):
         self.xr = mpb_h5_fobj['x.r']
         self.xi = mpb_h5_fobj['x.i']
@@ -146,21 +157,48 @@ class EMField():
         self.zi = mpb_h5_fobj['z.i']
         self.h5_fobj = mpb_h5_fobj
 
-    def close(self):
-        self.h5_fobj.close()        
+class epsilon_tensor(h5Dataset):
+    """
+    """
+    def __init__(self, mpb_h5_fobj):
+        self.xx = mpb_h5_fobj['epsilon.xx']
+        self.xy = mpb_h5_fobj['epsilon.xy']
+        self.yx = self.xy
+        self.xz = mpb_h5_fobj['epsilon.xz']
+        self.zx = self.xz
+        self.yy = mpb_h5_fobj['epsilon.yy']
+        self.yz = mpb_h5_fobj['epsilon.yz']
+        self.zy = self.yz
+        self.zz = mpb_h5_fobj['epsilon.zz']
+        self.h5_fobj = mpb_h5_fobj
 
-def readfield(kindex, band, mpb, field_type='e', path=''):
+def readfield(mpb, kindex=None, band=None, field_type=None, path=None):
+    """
+    Reads the appropriate .h5 file from MPB output. Defaults to epsilon.h5
+    """
     #fname = '/home/nishan/Code/thales/MPB/w14/e.k03.b16.zeven.h5'
-    if path == '':
+    if path == None:
         # choode path from mpb.root
         path = mpb.path
     if mpb.numK < 10:
         width = 1
     elif mpb.numK < 99:
         width = 2
-    fname = '/'.join([path, field_type + '.k' + str(kindex).zfill(width) + '.b' + str(band).zfill(width) + '.' + mpb.symm + '.h5'])
-    f = h5py.File(fname, 'r')
-    field = EMField(f)
+    if field_type == 'e' or field_type == 'h':
+        fname = '/'.join([path, field_type + '.k' + str(kindex).zfill(width) + '.b' + str(band).zfill(width) + '.' + mpb.symm + '.h5'])
+        f = h5py.File(fname, 'r')
+        field = EMField(f)
+    elif field_type == 'epsilon':
+        fname = '/'.join([path, 'epsilon.h5'])
+        f = h5py.File(fname, 'r')
+        field = epsilon_tensor(f)
+    elif field_type == None or field_type == 'epsilon_isotropic_trace':
+        fname = '/'.join([path, 'epsilon.h5'])
+        f = h5py.File(fname, 'r')
+        field = h5Dataset(f, dset='data')
+    else:
+        print('MPBBandstructure:readfield:Invalid field_type entered')
+        return None
     return field
 
 # ks = []  # tuple of k points

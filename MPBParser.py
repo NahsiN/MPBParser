@@ -8,6 +8,7 @@ import numpy as np
 import h5py
 import sys
 
+
 def strip_spaces(fields):
     ''' Strip spaces and newline characters from a list of strings '''
     # id(fields[:]) ≠ id(fields). fields[:] creates a new copy to allow
@@ -15,8 +16,9 @@ def strip_spaces(fields):
     # strip out spaces
     for element in fields[:]:
         fields.pop(0)
-        fields.append(element.strip(' \n')) # \n is only needed for last element
+        fields.append(element.strip(' \n'))  # \n only needed for last element
     return fields
+
 
 class MPBBandStructure:
     """
@@ -26,7 +28,7 @@ class MPBBandStructure:
     def __init__(self, out_file, symm):
         self.fname_mpb = out_file
         self.symm = symm
-        #self.path = out_file.rstrip(re.search('[\w.]+.out', out_file).group())  # relies on file being named foo.out
+        # self.path = out_file.rstrip(re.search('[\w.]+.out', out_file).group())  # relies on file being named foo.out
         self.path = '/'.join(out_file.split('/')[0:-1])  # [0:-1] ensures not to include filename. Spaces allowed?
 
     def csvparser(self):
@@ -53,6 +55,7 @@ class MPBBandStructure:
             # determine a header to write to the velocites .csv file
             # search for the line 'zevenfreqs:, k index, k1, .....'
             if re.search(r'k index', line):
+                # write velocites csv file header
                 header = []
                 header.append('k index')
                 header_rest = (re.search(symm+r' band [\s\S]*', line).group()).split(',')
@@ -94,8 +97,6 @@ class MPBBandStructure:
         """
 
         symm = self.symm
-        numK = self.numK
-        numBands = self.numBands
 
         f_freqs = open(symm+'freqs.csv', 'r', newline='')
         f_velocities = open(symm+'velocities.csv', 'r', newline='')
@@ -108,33 +109,51 @@ class MPBBandStructure:
             freqs_data.append(row)
         for row in velocities_reader:
             velocities_data.append(row)
+
+        if hasattr(self, 'numK') and hasattr(self, 'numBands'):
+            numK = self.numK
+            numBands = self.numBands
+        else:
+            self.numK = int(freqs_data[-1][0])
+            self.numBands = len(freqs_data[0][5:])
+            numK = self.numK
+            numBands = self.numBands
+
         freqs_data.pop(0)  # pop out top row made up of list of strings only
         velocities_data.pop(0)
         f_freqs.close()
         f_velocities.close()
 
-        # convert list of lists to appropriate numpy arrays. look at the list of
-        # lists to understand the indexing
-        k = np.zeros((numK,3))
+        # convert list of lists to appropriate numpy arrays. look at the list
+        # of lists to understand the indexing
+        k = np.zeros((numK, 3))
         kmag = np.zeros(numK)
-        freqs = np.zeros((numK,numBands))
-        vg = np.zeros((numK,3,numBands))
-        vgmag = np.zeros((numK,numBands))
+        freqs = np.zeros((numK, numBands))
+        vg = np.zeros((numK, 3, numBands))
+        vgmag = np.zeros((numK, numBands))
 
-        for i in range(0,numK):
-            k[i,0] = freqs_data[i][1]  # automatic typecast from str to float
-            k[i,1] = freqs_data[i][2]
-            k[i,2] = freqs_data[i][3]
+        for i in range(0, numK):
+            k[i, 0] = freqs_data[i][1]  # automatic typecast from str to float
+            k[i, 1] = freqs_data[i][2]
+            k[i, 2] = freqs_data[i][3]
             kmag[i] = freqs_data[i][4]
-            freqs[i,:] = freqs_data[i][5:]
-            for j in range(0,numBands):
-                vg[i,:,j] = velocities_data[i][j+1].split()
-            vgmag[i,:] = np.sqrt(vg[i,0,:]**2 + vg[i,1,:]**2 + vg[i,2,:]**2)
+            freqs[i, :] = freqs_data[i][5:]
+            # check to see is there is any actual data in velocities csv file
+            if len(velocities_data) != 0:
+                for j in range(0, numBands):
+                    vg[i, :, j] = velocities_data[i][j+1].split()
+                vgmag[i, :] = np.sqrt(vg[i, 0, :]**2 + vg[i, 1, :]**2 + vg[i, 2, :]**2)
 
-        self.k = k; self.kmag = kmag
+        self.k = k
+        self.kmag = kmag
         self.freqs = freqs
-        self.vg = vg; self.vgmag = vgmag
+        if len(velocities_data) != 0:
+            self.vg = vg
+            self.vgmag = vgmag
+        else:
+            print('No data in velocities csv file. Velocity attributes NOT created.')
         print('Parsing of csv files complete. New data attributes created!')
+
 
 class h5Dataset:
     def __init__(self, mpb_h5_fobj, dset):
@@ -144,9 +163,11 @@ class h5Dataset:
     def close(self):
         self.h5_fobj.close()
 
+
 class EMField(h5Dataset):
     """
-    Class for tensor components of the EM fields
+    Class for tensor components of the EM fields.
+    Inherits methods of Class h5Dataset
     """
     def __init__(self, mpb_h5_fobj):
         self.xr = mpb_h5_fobj['x.r']
@@ -156,6 +177,23 @@ class EMField(h5Dataset):
         self.zr = mpb_h5_fobj['z.r']
         self.zi = mpb_h5_fobj['z.i']
         self.h5_fobj = mpb_h5_fobj
+
+    def create_complex(self):
+        I = complex(0, 1)
+        # [:] creates a copy of the dataset in RAM
+        self.x = self.xr[:] + I*self.xi[:]
+        self.y = self.yr[:] + I*self.yi[:]
+        self.z = self.zr[:] + I*self.zi[:]
+        print('Complex fields created. Closing .h5 file and deleting attributes')
+        self.close()  # close .h5 files
+        del self.xr
+        del self.xi
+        del self.yr
+        del self.yi
+        del self.zr
+        del self.zi
+        del self.h5_fobj
+
 
 class epsilon_tensor(h5Dataset):
     """
@@ -172,34 +210,86 @@ class epsilon_tensor(h5Dataset):
         self.zz = mpb_h5_fobj['epsilon.zz']
         self.h5_fobj = mpb_h5_fobj
 
-def readfield(mpb, kindex=None, band=None, field_type=None, path=None):
+def readfield(mpbobj=None, kindex=None, band=None, field_type=None, field_file=None):
     """
     Reads the appropriate .h5 file from MPB output. Defaults to epsilon.h5
     """
     #fname = '/home/nishan/Code/thales/MPB/w14/e.k03.b16.zeven.h5'
-    if path == None:
-        # choode path from mpb.root
+    if isinstance(mpbobj, MPBBandStructure):
+        mpb = mpbobj
         path = mpb.path
-    if mpb.numK < 10:
-        width = 1
-    elif mpb.numK < 99:
-        width = 2
-    if field_type == 'e' or field_type == 'h':
-        fname = '/'.join([path, field_type + '.k' + str(kindex).zfill(width) + '.b' + str(band).zfill(width) + '.' + mpb.symm + '.h5'])
-        f = h5py.File(fname, 'r')
-        field = EMField(f)
+        symm = mpb.symm
+        if mpbobj.numK < 10:
+            width = 1
+        elif mpbobj.numK < 99:
+            width = 2
+    elif field_file:
+        if not isinstance(field_file, str):
+            print('field_file must be str')
+            return None
+    else:
+        print('Input to readfield in invalid')
+        return None
+
+
+    if field_type == 'e' or field_type == 'h' or field_type == 'e.nonbloch.v' \
+    or field_type == 'h.nonbloch.v':
+        if field_file:
+            f = h5py.File(field_file, 'r')
+            field = EMField(f)
+        else:
+            fname = '/'.join([path, field_type + '.k' + str(kindex).zfill(width) + \
+             '.b' + str(band).zfill(width) + '.' + symm + '.h5'])
+            f = h5py.File(fname, 'r')
+            field = EMField(f)
     elif field_type == 'epsilon':
-        fname = '/'.join([path, 'epsilon.h5'])
-        f = h5py.File(fname, 'r')
-        field = epsilon_tensor(f)
-    elif field_type == None or field_type == 'epsilon_isotropic_trace':
-        fname = '/'.join([path, 'epsilon.h5'])
-        f = h5py.File(fname, 'r')
-        field = h5Dataset(f, dset='data')
+        if field_file:
+            f = h5py.File(field_file, 'r')
+            field = epsilon_tensor(f)
+        else:
+            fname = '/'.join([path, 'epsilon.h5'])
+            f = h5py.File(fname, 'r')
+            field = epsilon_tensor(f)
+    elif field_type == 'epsilon_isotropic_trace':
+        if field_file:
+            f = h5py.File(field_file, 'r')
+            field = h5Dataset(f, dset='data')
+        else:
+            fname = '/'.join([path, 'epsilon.h5'])
+            f = h5py.File(fname, 'r')
+            field = h5Dataset(f, dset='data')
     else:
         print('MPBBandstructure:readfield:Invalid field_type entered')
         return None
     return field
+
+def getscale(mpb, retstep=False):
+    """
+    Get x,y,z grids
+    """
+
+    # read epsilon.h5 file for lattice vectors
+    fname = '/'.join([mpb.path, 'epsilon.h5'])
+    f = h5py.File(fname, 'r')
+    epsilon = h5Dataset(f, dset='data')
+    # Nx, Ny, Nz are valid for any grid
+    Nx = epsilon.dset.shape[0]
+    Ny = epsilon.dset.shape[1]
+    Nz = epsilon.dset.shape[2]
+    lattice_vecs_h5 = h5Dataset(f, dset='lattice vectors')
+    lattice_vecs = lattice_vecs_h5.dset
+
+    # For RECTANGULAR GRID ONLY
+    (x,dx) = np.linspace(0, lattice_vecs[0,0], Nx, retstep=True)
+    (y,dy) = np.linspace(0, lattice_vecs[1,1], Ny, retstep=True)
+    (z,dz) = np.linspace(0, lattice_vecs[2,2], Nz, retstep=True)
+
+    epsilon.close()
+    if retstep:
+        return (x, dx, y, dy, z, dz)
+    else:
+        return (x, y, z)
+
 
 # ks = []  # tuple of k points
 # # look for line of the form 'solve_kpoint (0.3,0,0)'

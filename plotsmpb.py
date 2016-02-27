@@ -8,9 +8,10 @@ import numpy as np
 import sys
 
 def plotbands(mpb, bandlist=None, lw=1, xticks=None, xticklabels=None,
-              figsize=None, ax_rect=None, has_light_line=False):
+              figsize=None, ax_rect=None, has_light_line=False, ylims_offsets=[0, 0]):
     """
     Plots bands
+    for light line assume ω = c|k|/n where n=1. In dimensionles coords ν = |k|
     """
 
     if figsize is not None:
@@ -21,30 +22,42 @@ def plotbands(mpb, bandlist=None, lw=1, xticks=None, xticklabels=None,
     if ax_rect is not None:
         plt.axes(ax_rect)
 
+    # Check if it makes sense to plot versus kmag
+    if np.all(np.sort(mpb.kmag) == mpb.kmag):
+        kindex_plot_flag = False
+    else:
+        kindex_plot_flag = True
+        print('Nonsensical to use |k| for plotting.')
+
     # plot a specific number of bands
     if isinstance(bandlist, list):
         for band in bandlist:
-            # plt.plot(mpb.kmag, mpb.freqs[:, band], '-b', linewidth=lw)
-            plt.plot(mpb.kmag, mpb.freqs[:, band], '-b')
+            if kindex_plot_flag:
+                plt.plot(mpb.freqs[:, band])
+                if has_light_line:
+                    plt.fill_between(range(len(mpb.kmag)), mpb.kmag, 1, alpha=0.5, facecolor='gray', edgecolor='black')
+                    # plt.plot(range(len(mpb.kmag)), mpb.kmag)
+            else:
+                # plt.plot(mpb.kmag, mpb.freqs[:, band], '-b', linewidth=lw)
+                plt.plot(mpb.kmag, mpb.freqs[:, band])
+                if has_light_line:
+                    plt.fill_between(mpb.kmag, mpb.kmag, 1, alpha=0.5, facecolor='gray', edgecolor='black')
+                    # plt.plot(mpb.kmag, mpb.kmag)
 
-        if has_light_line:
-            plt.fill_between(range(len(mpb.kmag)), mpb.kmag, 1, alpha=0.5, facecolor='gray', edgecolor='black')
+        if kindex_plot_flag:
+            plt.xlim(0, len(mpb.freqs[:, band])-1)
+        else:
+            plt.xlim(mpb.kmag[0], mpb.kmag[-1])
+            plt.xlabel(r'$|\mathbf{k}| \left[\frac{2\pi}{a}\right]$')
 
-        plt.xlim(mpb.kmag[0], mpb.kmag[-1])
-        plt.ylim(1e-3, max(mpb.freqs[:, bandlist[-1]])+1e-2)
+        # THIS 1e-3 OFFSET NEEDS TO BE TUNABLE FROM THE FUNCTION CALL
+        plt.ylim(min(mpb.freqs[:, bandlist[-1]]) + ylims_offsets[0], max(mpb.freqs[:, bandlist[-1]]) + ylims_offsets[1])
         # plt.ylim(1e-3, )
         plt.ylabel(r'$\nu \left[\frac{c}{a}\right]$')
         # plt.tick_params(labelsize=ftsize)
 
     # plot all bands
     else:
-        # Check if it makes sense to plot versus kmag
-        if np.all(np.sort(mpb.kmag) == mpb.kmag):
-            kindex_plot_flag = False
-        else:
-            kindex_plot_flag = True
-            print('Nonsensical to use |k| for plotting.')
-
         for band in range(mpb.numBands):
             if kindex_plot_flag:
                 # plt.plot(mpb.freqs[:, band], color='b', linewidth=lw)
@@ -57,12 +70,17 @@ def plotbands(mpb, bandlist=None, lw=1, xticks=None, xticklabels=None,
                     print('You should specify x ticks manually.')
                     # ax.set_xticks((10, 20))
                     # ax.set_xticklabels(['Hi', 'Bye'])
+                if has_light_line:
+                    plt.fill_between(range(len(mpb.kmag)), mpb.kmag, 1, alpha=0.5, facecolor='gray', edgecolor='black')
+                    # plt.plot(range(len(mpb.kmag)), mpb.kmag)
+
             else:
                 # plt.plot(mpb.kmag, mpb.freqs[:, band], color='b', linewidth=lw)
                 # plt.tick_params(labelsize=ftsize)
                 plt.plot(mpb.kmag, mpb.freqs[:, band], color='b')
-        if has_light_line:
-            plt.fill_between(range(len(mpb.kmag)), mpb.kmag, 1, alpha=0.5, facecolor='gray', edgecolor='black')
+                if has_light_line:
+                    plt.fill_between(mpb.kmag, mpb.kmag, 1, alpha=0.5, facecolor='gray', edgecolor='black')
+                    # plt.plot(mpb.kmag, mpb.kmag)
 
         if kindex_plot_flag:
             plt.xlim(0, len(mpb.freqs[:, band])-1)
@@ -91,6 +109,7 @@ def plotfields(mpb, field_type, kindex=None, band=None, comp=None, mpbpostproces
         plt.figure()
 
     epsilon = readfield(mpb, field_type='epsilon_isotropic_trace', mpbpostprocess=mpbpostprocess)
+
     if field_type == 'e':
         E = readfield(mpb, kindex, band, field_type, mpbpostprocess=mpbpostprocess)
         E.create_complex()
@@ -126,8 +145,33 @@ def plotfields(mpb, field_type, kindex=None, band=None, comp=None, mpbpostproces
                 ax = plt.gca()
                 ax.set_xticks(())
                 ax.set_yticks(())
-                plt.xlim(0, E2.shape[0]-1)
-                plt.ylim(0, E2.shape[1]-1)
+                # Determine which grid is on the axis. If Ny > Nx, the yindices
+                # are placed on the x-axis
+                if E2.shape[0] >= E2.shape[1]:
+                    plt.xlim(0, E2.shape[0]-1)
+                    plt.ylim(0, E2.shape[1]-1)
+                else:
+                    plt.xlim(0, E2.shape[1]-1)
+                    plt.ylim(0, E2.shape[0]-1)
+
+            elif E2.ndim == 3:
+                # ASSUME SLAB GEOMETRY
+                # xy cross section
+                plt.imshow(E2[:, :, E2.shape[2]/2], aspect='equal')
+                plt.colorbar()
+                plt.contour(epsilon.dset[:, :, epsilon.dset.shape[2]/2], colors='w', **epsilon_contour_options)
+                ax = plt.gca()
+                ax.set_xticks(())
+                ax.set_yticks(())
+
+                # Determine which grid is on the axis. If Ny > Nx, the yindices
+                # are placed on the x-axis
+                if E2.shape[0] >= E2.shape[1]:
+                    plt.xlim(0, E2.shape[0]-1)
+                    plt.ylim(0, E2.shape[1]-1)
+                else:
+                    plt.xlim(0, E2.shape[1]-1)
+                    plt.ylim(0, E2.shape[0]-1)
 
     elif field_type == 'epsilon':
         if len(epsilon.dset.shape) == 1:
@@ -153,7 +197,89 @@ def plotfields(mpb, field_type, kindex=None, band=None, comp=None, mpbpostproces
             ax = plt.gca()
             ax.set_xticks(())
             ax.set_yticks(())
-            plt.xlim(0, epsilon.dset.shape[0]-1)
-            plt.ylim(0, epsilon.dset.shape[1]-1)
+
+        elif len(epsilon.dset.shape) == 3:
+            # ASSUME PC SLAB GEOMETRY ONLY
+            # plot in middle of slab
+            # xy cross section
+            plt.imshow(epsilon.dset[:, :, epsilon.dset.shape[2]/2], cmap='Greys', aspect='equal')
+            plt.colorbar()
+            # plt.xlim(0, epsilon.dset.shape[0]-1)
+            # plt.ylim(0, epsilon.dset.shape[1]-1)
+            ax = plt.gca()
+            ax.set_xticks(())
+            ax.set_yticks(())
 
     epsilon.close()
+
+
+def plotvg(mpb, bandlist=None, lw=1, xticks=None, xticklabels=None,
+              figsize=None, ax_rect=None, has_light_line=False):
+    """
+    Plots vg
+    """
+
+    if figsize is not None:
+        plt.figure(figsize=figsize)
+    else:
+        plt.figure()
+
+    if ax_rect is not None:
+        plt.axes(ax_rect)
+
+    # Check if it makes sense to plot versus kmag
+    if np.all(np.sort(mpb.kmag) == mpb.kmag):
+        kindex_plot_flag = False
+    else:
+        kindex_plot_flag = True
+        print('Nonsensical to use |k| for plotting.')
+
+    # plot a specific number of bands
+    if isinstance(bandlist, list):
+        for band in bandlist:
+            # plt.plot(mpb.kmag, mpb.freqs[:, band], '-b', linewidth=lw)
+            plt.plot(mpb.kmag, mpb.vgmag[:, band])
+
+        if has_light_line:
+            plt.fill_between(range(len(mpb.kmag)), mpb.kmag, 1, alpha=0.5, facecolor='gray', edgecolor='black')
+
+        if kindex_plot_flag:
+            plt.xlim(0, len(mpb.freqs[:, band])-1)
+        else:
+            plt.xlim(mpb.kmag[0], mpb.kmag[-1])
+            plt.xlabel(r'$|\mathbf{k}| \left[\frac{2\pi}{a}\right]$')
+        plt.ylim(1e-3, np.max(mpb.vgmag) + 1e-2)
+        # plt.ylim(1e-3, )
+        plt.ylabel(r'$|v_g| [c]$')
+        # plt.tick_params(labelsize=ftsize)
+
+    # plot all bands
+    else:
+        for band in range(mpb.numBands):
+            if kindex_plot_flag:
+                # plt.plot(mpb.freqs[:, band], color='b', linewidth=lw)
+                plt.plot(mpb.vgmag[:, band], color='b')
+                ax = plt.gca()
+                if xticklabels is not None:
+                    ax.set_xticks(xticks)
+                    ax.set_xticklabels(xticklabels)
+                else:
+                    print('You should specify x ticks manually.')
+                    # ax.set_xticks((10, 20))
+                    # ax.set_xticklabels(['Hi', 'Bye'])
+            else:
+                # plt.plot(mpb.kmag, mpb.freqs[:, band], color='b', linewidth=lw)
+                # plt.tick_params(labelsize=ftsize)
+                plt.plot(mpb.kmag, mpb.freqs[:, band], color='b')
+        if has_light_line:
+            plt.fill_between(range(len(mpb.kmag)), mpb.kmag, 1, alpha=0.5, facecolor='gray', edgecolor='black')
+
+        if kindex_plot_flag:
+            plt.xlim(0, len(mpb.vgmag[:, band])-1)
+        else:
+            plt.xlim(mpb.kmag[0], mpb.kmag[-1])
+            plt.xlabel(r'$|\mathbf{k}| \left[\frac{2\pi}{a}\right]$')
+
+        plt.ylim(1e-3, np.max(mpb.vgmag)+1e-2)
+        plt.ylabel(r'$|v_g| \left[c\right]$')
+        # plt.tick_params(labelsize=ftsize)

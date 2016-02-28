@@ -9,31 +9,102 @@ import h5py
 import sys
 import os
 
+
 def strip_spaces(fields):
-    ''' Strip spaces and newline characters from a list of strings '''
+    """
+    Strip spaces and newline characters from a list of strings.
+
+    Inputs
+    ------
+    fields : list of strings
+
+    Returns
+    -------
+    list : modified input list where the characters ' \n' have been stripped
+
+    Examples
+    --------
+    strip_spaces(['hi ', 'zeven 1', 'yo\n'])
+    """
+
     # id(fields[:]) ≠ id(fields). fields[:] creates a new copy to allow
     # me to edit fields inside the loop (Remember Python passes by reference)
     # strip out spaces
     for element in fields[:]:
+        # pop out the first element
         fields.pop(0)
+        # append the first element back after stripping
         fields.append(element.strip(' \n'))  # \n only needed for last element
     return fields
 
 
 class MPBBandStructure:
     """
-    Class for parsing MPB output
+    Class for parsing MPB output.
+
+    Instance Variables
+    ------------------
+    out_file : path to mpb output file
+    symm : symmetry to look for. If '' is used, it will pick up any symmetry
+
+    Method Attributes
+    -----------------
+    csvparser()
+    readbandata()
+
+    Data Attributes
+    ---------------
+    fname_mpb : filename of MPB output file
+    symm : Symmetry of MPB run. equals '' when no symmetry is present
+    path : path to MPB out file
+    numBands : number of bands
+    numK : number of k-points
+    k[k-index, vector-comp] :  numpy array for k
+    kmag[k-index] : numpy array for |k|
+    freqs[k-index, band-index] : numpy array for frequencies
+    vg[k-index, band-index, vector-comp] :
+    vgmag[k-index, band-index] :
+
+    Examples
+    --------
+    mpb = MPBBandStructure('foo.out', 'zeven')
+    mpb = MPBBandStructure('foo.out', '')
     """
 
     def __init__(self, out_file, symm):
+        """
+        Requires name of mpb file and symmetry
+
+        Instance Variables
+        ------------------
+        out_file : path to mpb output file
+        symm : symmetry to look for. If '' is used, it will pick up any symmetry
+        """
+
         self.fname_mpb = out_file
         self.symm = symm
-        # self.path = out_file.rstrip(re.search('[\w.]+.out', out_file).group())  # relies on file being named foo.out
-        self.path = '/'.join(out_file.split('/')[0:-1])  # [0:-1] ensures not to include filename. Spaces allowed?
+        # relies on file being named foo.out
+        # self.path = out_file.rstrip(re.search('[\w.]+.out', out_file).group())
+        # [0:-1] ensures not to include filename. Spaces allowed?
+        self.path = '/'.join(out_file.split('/')[0:-1])
 
     def csvparser(self):
         """
-        Parses MPB output file to two csv files while defining class data attributes
+        Parses MPB output file to two csv files and defines data attributes
+
+        Input
+        -----
+        self
+
+        Returns
+        -------
+        Just writes out two .csv files, one for frequencies and group
+        velocities while creating some data attributes
+
+        Examples
+        --------
+        mpb = MPBBandStructure('foo.out', 'zeven')
+        mpb.csvparser()
         """
 
         symm = self.symm
@@ -50,12 +121,14 @@ class MPBBandStructure:
 
         print('Creating {0}'.format(f_freqs_path))
         print('Creating {0}'.format(f_velocities_path))
+        # create file obects
         f_freqs = open(f_freqs_path, 'w', newline='')
         f_velocities = open(f_velocities_path, 'w', newline='')
-
+        # create .csv writer objects
         freqs_writer = csv.writer(f_freqs)  # initialize a writer object
         velocities_writer = csv.writer(f_velocities)
 
+        # go through each line in mpb file
         for line in f_mpb:
             # print(line)  # DEBUG
             # determine number of k points and bands
@@ -70,11 +143,13 @@ class MPBBandStructure:
                 # write velocites csv file header
                 header = []
                 header.append('k index')
-                header_rest = (re.search(symm+r' band [\s\S]*', line).group()).split(',')
+                header_rest = (re.search(symm+r' band [\s\S]*',
+                               line).group()).split(',')
                 for element in header_rest:
                     header.append(element)
                 header = strip_spaces(header)
-                velocities_writer.writerow(header)  # write out list as row in .csv file
+                # write out list as row in .csv file
+                velocities_writer.writerow(header)
 
             # look for lines of the form 'zevenfreqs:,'
             # write out to frequencies .csv file
@@ -82,7 +157,8 @@ class MPBBandStructure:
                 # create a list by splitting line
                 fields = (line.lstrip(symm+'freqs:,')).split(',')
                 fields = strip_spaces(fields)
-                freqs_writer.writerow(fields)  # write out list as row in .csv file
+                # write out list as row in .csv file
+                freqs_writer.writerow(fields)
 
             # write out velocities to .csv file
             if re.match(symm + r'velocity:,[\s\S]*', line):
@@ -90,17 +166,20 @@ class MPBBandStructure:
                 for element in fields[:]:
                     fields.pop(0)
                     fields.append(element.strip(' #()\n'))
-                velocities_writer.writerow(fields)  # write out list as row in .csv file
+                velocities_writer.writerow(fields)
 
+        # close file objects
         f_mpb.close()
         f_freqs.close()
         f_velocities.close()
 
     def readbanddata(self):
         """
-        Loads csv files to parse their textual data into numpy arrays. Creates
-        new data attributes for object.
+        Loads csv files for parsing into numpy arrays. Creates data attributes.
 
+        Returns
+        -------
+        Data attributes for class MPBBandStructure
         self.k: [self.numK × 3]
         self.kmag: [self.numK × 1]
         self.freqs: [self.numK × self.numBands]
@@ -121,6 +200,7 @@ class MPBBandStructure:
         freqs_data = []
         velocities_data = []
 
+        # creates a list of lists as each row is scanned
         for row in freqs_reader:
             freqs_data.append(row)
         for row in velocities_reader:
@@ -129,6 +209,7 @@ class MPBBandStructure:
         if hasattr(self, 'numK') and hasattr(self, 'numBands'):
             numK = self.numK
             numBands = self.numBands
+        # determine it from list of lists scanned above
         else:
             self.numK = int(freqs_data[-1][0])
             self.numBands = len(freqs_data[0][5:])
@@ -163,6 +244,7 @@ class MPBBandStructure:
         self.k = k
         self.kmag = kmag
         self.freqs = freqs
+        # Check to see if velocity data exists or not
         if len(velocities_data) != 0:
             self.vg = vg
             self.vgmag = vgmag
@@ -172,6 +254,23 @@ class MPBBandStructure:
 
 
 class h5Dataset:
+    """
+    Class for reading a dataset from an .h5 file
+
+    Instance Variables
+    ------------------
+    mpb_h5_fobj : h5 file object initialize using h5py.File()
+    dset : name or path of dataset to read
+
+    Method Attributes
+    -----------------
+    close() : close the .h5 file
+
+    Data Attributes
+    ---------------
+    dset : dataset read from .h5 file
+    h5_fobj : h5 file object
+    """
     def __init__(self, mpb_h5_fobj, dset):
         self.dset = mpb_h5_fobj[dset]
         self.h5_fobj = mpb_h5_fobj

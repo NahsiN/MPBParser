@@ -51,7 +51,7 @@ def plotbands(mpb, bandlist=None, lw=1, xticks=None, xticklabels=None,
             plt.xlabel(r'$|\mathbf{k}| \left[\frac{2\pi}{a}\right]$')
 
         # THIS 1e-3 OFFSET NEEDS TO BE TUNABLE FROM THE FUNCTION CALL
-        plt.ylim(min(mpb.freqs[:, bandlist[-1]]) + ylims_offsets[0], max(mpb.freqs[:, bandlist[-1]]) + ylims_offsets[1])
+        plt.ylim(np.min(mpb.freqs[:, bandlist]) + ylims_offsets[0], np.max(mpb.freqs[:, bandlist]) + ylims_offsets[1])
         # plt.ylim(1e-3, )
         plt.ylabel(r'$\nu \left[\frac{c}{a}\right]$')
         # plt.tick_params(labelsize=ftsize)
@@ -86,14 +86,15 @@ def plotbands(mpb, bandlist=None, lw=1, xticks=None, xticklabels=None,
             plt.xlim(0, len(mpb.freqs[:, band])-1)
         else:
             plt.xlim(mpb.kmag[0], mpb.kmag[-1])
+            plt.xlabel(r'$|\mathbf{k}| \left[\frac{2\pi}{a}\right]$')
 
-        plt.ylim(1e-3, max(mpb.freqs[:, -1])+1e-2)
+        plt.ylim(ylims_offsets[0], max(mpb.freqs[:, -1]) + ylims_offsets[1])
         plt.ylabel(r'$\nu \left[\frac{c}{a}\right]$')
         # plt.tick_params(labelsize=ftsize)
 
 
 def plotfields(mpb, field_type, kindex=None, band=None, comp=None, mpbpostprocess=False,
-    epsilon_contour_options={}, figsize=None):
+    epsilon_contour_options={}, figsize=None, field_file=None, epsilon_file=None):
     """
     Plots fields
 
@@ -108,10 +109,17 @@ def plotfields(mpb, field_type, kindex=None, band=None, comp=None, mpbpostproces
     else:
         plt.figure()
 
-    epsilon = readfield(mpb, field_type='epsilon_isotropic_trace', mpbpostprocess=mpbpostprocess)
+    if epsilon_file is None:
+        epsilon = readfield(mpb, field_type='epsilon_isotropic_trace', mpbpostprocess=mpbpostprocess)
+    elif isinstance(epsilon_file, str):
+        epsilon = readfield(mpb, field_type='epsilon_isotropic_trace', mpbpostprocess=mpbpostprocess, field_file=epsilon_file)
 
     if field_type == 'e':
-        E = readfield(mpb, kindex, band, field_type, mpbpostprocess=mpbpostprocess)
+        if field_file is None:
+            E = readfield(mpb, kindex, band, field_type, mpbpostprocess=mpbpostprocess)
+        elif isinstance(field_file, str):
+            E = readfield(mpb, kindex, band, field_type, mpbpostprocess=mpbpostprocess, field_file=field_file)
+
         E.create_complex()
         if comp is None:
             E2 = np.abs(E.x)**2 + np.abs(E.y)**2 + np.abs(E.z)**2
@@ -214,7 +222,7 @@ def plotfields(mpb, field_type, kindex=None, band=None, comp=None, mpbpostproces
 
 
 def plotvg(mpb, bandlist=None, lw=1, xticks=None, xticklabels=None,
-              figsize=None, ax_rect=None, has_light_line=False):
+              figsize=None, ax_rect=None, has_light_line=False, ylims_offsets=[0, 0]):
     """
     Plots vg
     """
@@ -248,7 +256,9 @@ def plotvg(mpb, bandlist=None, lw=1, xticks=None, xticklabels=None,
         else:
             plt.xlim(mpb.kmag[0], mpb.kmag[-1])
             plt.xlabel(r'$|\mathbf{k}| \left[\frac{2\pi}{a}\right]$')
-        plt.ylim(1e-3, np.max(mpb.vgmag) + 1e-2)
+
+        # plt.ylim(1e-3, np.max(mpb.vgmag) + 1e-2)
+        plt.ylim(np.min(mpb.vgmag[:, bandlist]) + ylims_offsets[0], np.max(mpb.vgmag[:, bandlist]) + ylims_offsets[1])
         # plt.ylim(1e-3, )
         plt.ylabel(r'$|v_g| [c]$')
         # plt.tick_params(labelsize=ftsize)
@@ -280,6 +290,6 @@ def plotvg(mpb, bandlist=None, lw=1, xticks=None, xticklabels=None,
             plt.xlim(mpb.kmag[0], mpb.kmag[-1])
             plt.xlabel(r'$|\mathbf{k}| \left[\frac{2\pi}{a}\right]$')
 
-        plt.ylim(1e-3, np.max(mpb.vgmag)+1e-2)
+        plt.ylim(ylims_offsets[0], np.max(mpb.vgmag) + ylims_offsets[1])
         plt.ylabel(r'$|v_g| \left[c\right]$')
         # plt.tick_params(labelsize=ftsize)

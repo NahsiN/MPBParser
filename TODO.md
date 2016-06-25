@@ -9,7 +9,15 @@
 - [ ] **Low** getscale rectangular grid check
 - [ ] **Low** MPBParser won't work with -k
 
+## TO DO
+- [ ] Display an error if .h5 file not found or dataset fails to open. E.g. epsilon doesn't contain data-new
+- [ ] No sense of light_line in plotvg
+
 ## Completed
+- [x] PROTOCOL: in the program, kind, bandind are 0 indexed, when outputting, they should be 1-indexed
+- [x] improved default limits for band plotting
+- [x] in readfield adjust width to read depedning on numK and numBands
+- [x] epsilon field_file can be specified to plotfields
 - [x] lightline included if needed
 - [x] .csv file not created if present
 - [x] **Low** plot the bands, fields, epsilon

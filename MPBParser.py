@@ -373,10 +373,14 @@ def readfield(mpbobj=None, kindex=None, band=None, field_type=None,
         mpb = mpbobj
         path = mpb.path
         symm = mpb.symm
-        if mpbobj.numK < 10:
-            width = 1
-        elif mpbobj.numK < 99:
+
+        if mpbobj.numK > 99 or mpbobj.numBands > 99:
+            width = 3
+        elif mpbobj.numK > 10 or mpbobj.numBands > 10:
             width = 2
+        elif mpbobj.numK > 1 or mpbobj.numBands > 1:
+            width = 1
+
     elif field_file:
         if not isinstance(field_file, str):
             print('field_file must be str')
@@ -385,6 +389,13 @@ def readfield(mpbobj=None, kindex=None, band=None, field_type=None,
         print('Input to readfield in invalid')
         return None
 
+    # -------------------------------------------------------------------------#
+    # My notation is 0 based but MPB's output is 1 based
+    if kindex is not None:
+        kindex = kindex + 1
+    if band is not None:
+        band = band + 1
+    # -------------------------------------------------------------------------#
 
     if field_type == 'e' or field_type == 'h' or field_type == 'e.nonbloch.v' \
     or field_type == 'h.nonbloch.v':
@@ -411,7 +422,6 @@ def readfield(mpbobj=None, kindex=None, band=None, field_type=None,
         if field_file:
             f = h5py.File(field_file, 'r')
             if not mpbpostprocess:
-                print('Yo')
                 field = h5Dataset(f, dset='data')
             else:
                 field = h5Dataset(f, dset='data-new')
@@ -445,22 +455,30 @@ def getscale(mpb, retstep=False):
     if dim == 1:
         Nx = epsilon.dset.shape[0]
         # For RECTANGULAR GRID ONLY
-        (x,dx) = np.linspace(0, lattice_vecs[0,0], Nx, retstep=True)
+        # (x,dx) = np.linspace(0, lattice_vecs[0,0], Nx, retstep=True)
+        # looking at some output files and geometric objects setup, this scale
+        # seems to what MPB is internally using
+        (x,dx) = np.linspace(-0.5*lattice_vecs[0,0], 0.5*lattice_vecs[0,0], Nx, retstep=True)
     elif dim == 2:
         Nx = epsilon.dset.shape[0]
         Ny = epsilon.dset.shape[1]
         # For RECTANGULAR GRID ONLY
-        (x,dx) = np.linspace(0, lattice_vecs[0,0], Nx, retstep=True)
-        (y,dy) = np.linspace(0, lattice_vecs[1,1], Ny, retstep=True)
+        # (x,dx) = np.linspace(0, lattice_vecs[0,0], Nx, retstep=True)
+        # (y,dy) = np.linspace(0, lattice_vecs[1,1], Ny, retstep=True)
+        (x,dx) = np.linspace(-0.5*lattice_vecs[0, 0], 0.5*lattice_vecs[0, 0], Nx, retstep=True)
+        (y,dy) = np.linspace(-0.5*lattice_vecs[1, 1], 0.5*lattice_vecs[1, 1], Ny, retstep=True)
     elif dim == 3:
         Nx = epsilon.dset.shape[0]
         Ny = epsilon.dset.shape[1]
         Nz = epsilon.dset.shape[2]
-        # For RECTANGULAR GRID ONLY
-        (x,dx) = np.linspace(0, lattice_vecs[0,0], Nx, retstep=True)
-        (y,dy) = np.linspace(0, lattice_vecs[1,1], Ny, retstep=True)
-        (z,dz) = np.linspace(0, lattice_vecs[2,2], Nz, retstep=True)
-
+        # For RECTANGULAR GRID ONLY WITH CARTESIAN BASIS VECTORS
+        # E.g, [1 0 0], [0 1 0], [0 0 1]
+        # (x,dx) = np.linspace(0, lattice_vecs[0,0], Nx, retstep=True)
+        # (y,dy) = np.linspace(0, lattice_vecs[1,1], Ny, retstep=True)
+        # (z,dz) = np.linspace(0, lattice_vecs[2,2], Nz, retstep=True)
+        (x,dx) = np.linspace(-0.5*lattice_vecs[0, 0], 0.5*lattice_vecs[0, 0], Nx, retstep=True)
+        (y,dy) = np.linspace(-0.5*lattice_vecs[1, 1], 0.5*lattice_vecs[1, 1], Ny, retstep=True)
+        (z,dz) = np.linspace(-0.5*lattice_vecs[2, 2], 0.5*lattice_vecs[2, 2], Nz, retstep=True)
     epsilon.close()
 
     if retstep:

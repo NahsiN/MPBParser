@@ -20,7 +20,7 @@ def indicator_func(mpb, eps_slab, eps_air, type, TOL=1e-3):
 
     if type == 'slab_only':
         indicator_slab = np.zeros(epsilon.dset.shape)
-        mask_slab = abs(epsilon.dset[:]- eps_slab) <= TOL
+        mask_slab = abs(epsilon.dset[:] - eps_slab) <= TOL
         indicator_slab[mask_slab] = 1
         indicator = indicator_slab
 

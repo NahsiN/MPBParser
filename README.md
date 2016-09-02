@@ -13,6 +13,10 @@ to aid my ongoing transition from Matlab to Python. Adding proper documentation
 is on the table but with no guaranteed timeline till I can see the light at the
 end of the PhD tunnel. Stay tuned!
 
+UPDATE: There is now a [tutorial](https://nbviewer.jupyter.org/github/NahsiN/MPBParser/blob/master/tutorial.ipynb).
+Be patient, it's a slow WIP.
+
+Similar Projects
 Please note this is one of the many attempts at making sense of MPB's data output.
 See [pyMPB](http://www.ece.ubc.ca/~hessamm/pympb.html) or
 [mpb-plotting](https://github.com/FilipDominec/mpb-plotting) for more details.

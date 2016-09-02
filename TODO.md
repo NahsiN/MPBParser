@@ -9,12 +9,16 @@
 - [ ] **Low** getscale rectangular grid check
 - [ ] **Low** MPBParser won't work with -k
 
+## Documentation
+- [ ] **High** Update docstrings for MPBBandStructure and it's methods
+
 ## TO DO
 - [ ] Display an error if .h5 file not found or dataset fails to open. E.g. epsilon doesn't contain data-new
 - [ ] No sense of light_line in plotvg
 - [ ] 3D epsilon cross section
 
 ## Completed
+- [x] start writing tutorial using Ipython notebook
 - [x] add epsilon fourier transform plot in plotfields
 - [x] add misc_plotting_utilities that contains fourier tranform and other helper
       functions.

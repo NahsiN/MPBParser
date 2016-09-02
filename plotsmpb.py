@@ -1,11 +1,15 @@
+# -*- coding: utf-8 -*-
 # plotting functions
 
 from MPBParser import readfield, getscale
+from scipy.fftpack import fftshift, fft2
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import matplotlib.colors as colors
 import scipy.constants as spconsts
 import numpy as np
 import sys
+import ipdb
 
 def plotbands(mpb, bandlist=None, lw=1, xticks=None, xticklabels=None,
               figsize=None, ax_rect=None, has_light_line=False, ylims_offsets=[0, 0]):
@@ -94,7 +98,7 @@ def plotbands(mpb, bandlist=None, lw=1, xticks=None, xticklabels=None,
 
 
 def plotfields(mpb, field_type, kindex=None, band=None, comp=None, mpbpostprocess=False,
-    epsilon_contour_options={}, figsize=None, field_file=None, epsilon_file=None):
+    epsilon_contour_options={}, figsize=None, field_file=None, epsilon_file=None, plot_options={}):
     """
     Plots fields
 
@@ -102,6 +106,8 @@ def plotfields(mpb, field_type, kindex=None, band=None, comp=None, mpbpostproces
     ------
     mpbpostprocess : False (default), assumes no post processing of the fields
                      has been performed using mpb-data
+    field_type : 'e', 'epsilon', 'epsilon-ft'
+    plot_options : specifies extra plot options such as axes limits
     """
 
     if figsize is not None:
@@ -184,6 +190,8 @@ def plotfields(mpb, field_type, kindex=None, band=None, comp=None, mpbpostproces
     elif field_type == 'epsilon':
         if len(epsilon.dset.shape) == 1:
             epsilon_grid = np.tile(epsilon.dset, (epsilon.dset.shape[0], 1))
+            ipdb.set_trace()
+            epsilon_grid_ft = fftshift(fft2(epsilon_grid))
             (x) = getscale(mpb)
             (xgrid, ygrid) = np.meshgrid(x, x)
             # plt.pcolormesh(xgrid, ygrid, epsilon_grid, cmap='Greys')
@@ -194,10 +202,16 @@ def plotfields(mpb, field_type, kindex=None, band=None, comp=None, mpbpostproces
             ax.set_yticks(())
             plt.xlim(0, epsilon_grid.shape[0]-1)
             plt.ylim(0, epsilon_grid.shape[1]-1)
+            plt.figure()
+            plt.imshow(np.abs(epsilon_grid_ft)**2)
+            plt.colorbar()
 
         elif len(epsilon.dset.shape) == 2:
             # Greys or gray
             # plt.pcolor(epsilon.dset, cmap='Greys')
+            # filter out DC_component
+            # epsilon_ft[np.unravel_index(np.argmax(epsilon_ft), np.shape(epsilon_ft))] = 0
+
             plt.imshow(epsilon.dset, cmap='Greys')
             plt.colorbar()
             plt.xlim(0, epsilon.dset.shape[0]-1)
@@ -210,13 +224,44 @@ def plotfields(mpb, field_type, kindex=None, band=None, comp=None, mpbpostproces
             # ASSUME PC SLAB GEOMETRY ONLY
             # plot in middle of slab
             # xy cross section
-            plt.imshow(epsilon.dset[:, :, epsilon.dset.shape[2]/2], cmap='Greys', aspect='equal')
+            # plt.imshow(epsilon.dset[:, :, epsilon.dset.shape[2]/2], cmap='Greys', aspect='equal')
+            # yz cross section
+            # plt.imshow(epsilon.dset[epsilon.dset.shape[0]/2, :, :], cmap='Greys', aspect='equal')
+            plt.imshow(epsilon.dset[0, :, :], cmap='Greys', aspect='equal')
             plt.colorbar()
             # plt.xlim(0, epsilon.dset.shape[0]-1)
             # plt.ylim(0, epsilon.dset.shape[1]-1)
             ax = plt.gca()
             ax.set_xticks(())
             ax.set_yticks(())
+
+    elif field_type == 'epsilon-ft':
+        if len(epsilon.dset.shape) == 1:
+            pass
+        elif len(epsilon.dset.shape) == 2:
+            # zero pad
+            epsilon_ft = fftshift(fft2(np.pad(epsilon.dset[:,:], (512, 512), 'constant')))
+            plt.imshow((np.abs(epsilon_ft)/np.max(np.abs(epsilon_ft)))**2, cmap='Greys', vmin=0, vmax=0.1)
+            ax = plt.gca()
+            ax.set_xticks(())
+            ax.set_yticks(())
+
+        elif len(epsilon.dset.shape) == 3:
+            pass
+
+        ax = plt.gca()
+        ax.set_xticks(())
+        ax.set_yticks(())
+
+        if 'xlims' in plot_options:
+            xa = plot_options['xlims'][0]
+            xb = plot_options['xlims'][1]
+            plt.xlim(xa, xb)
+
+        if 'ylims' in plot_options:
+            ya = plot_options['ylims'][0]
+            yb = plot_options['ylims'][1]
+            plt.ylim(ya, yb)
 
     epsilon.close()
 

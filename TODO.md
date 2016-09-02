@@ -12,8 +12,12 @@
 ## TO DO
 - [ ] Display an error if .h5 file not found or dataset fails to open. E.g. epsilon doesn't contain data-new
 - [ ] No sense of light_line in plotvg
+- [ ] 3D epsilon cross section
 
 ## Completed
+- [x] add epsilon fourier transform plot in plotfields
+- [x] add misc_plotting_utilities that contains fourier tranform and other helper
+      functions.
 - [x] PROTOCOL: in the program, kind, bandind are 0 indexed, when outputting, they should be 1-indexed
 - [x] improved default limits for band plotting
 - [x] in readfield adjust width to read depedning on numK and numBands

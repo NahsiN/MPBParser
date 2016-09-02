@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Parse the MPB output file for relevant quantities
 # Inspired from Patterson's Matlab code
 

@@ -190,8 +190,7 @@ def plotfields(mpb, field_type, kindex=None, band=None, comp=None, mpbpostproces
     elif field_type == 'epsilon':
         if len(epsilon.dset.shape) == 1:
             epsilon_grid = np.tile(epsilon.dset, (epsilon.dset.shape[0], 1))
-            ipdb.set_trace()
-            epsilon_grid_ft = fftshift(fft2(epsilon_grid))
+            # epsilon_grid_ft = fftshift(fft2(epsilon_grid))
             (x) = getscale(mpb)
             (xgrid, ygrid) = np.meshgrid(x, x)
             # plt.pcolormesh(xgrid, ygrid, epsilon_grid, cmap='Greys')
@@ -202,9 +201,9 @@ def plotfields(mpb, field_type, kindex=None, band=None, comp=None, mpbpostproces
             ax.set_yticks(())
             plt.xlim(0, epsilon_grid.shape[0]-1)
             plt.ylim(0, epsilon_grid.shape[1]-1)
-            plt.figure()
-            plt.imshow(np.abs(epsilon_grid_ft)**2)
-            plt.colorbar()
+            # plt.figure()
+            # plt.imshow(np.abs(epsilon_grid_ft)**2)
+            # plt.colorbar()
 
         elif len(epsilon.dset.shape) == 2:
             # Greys or gray

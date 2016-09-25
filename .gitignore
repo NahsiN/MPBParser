@@ -6,3 +6,10 @@
 *.out
 .ipynb_checkpoints/
 __pycache__
+*.vtk
+*.pdf
+*.eps
+*.png
+*.sh
+*.dat
+*.old

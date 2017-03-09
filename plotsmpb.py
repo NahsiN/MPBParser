@@ -38,14 +38,20 @@ def plotbands(mpb, bandlist=None, lw=1, xticks=None, xticklabels=None,
         for band in bandlist:
             if kindex_plot_flag:
                 plt.plot(mpb.freqs[:, band])
+                ax = plt.gca()
+                if xticklabels is not None:
+                    ax.set_xticks(xticks)
+                    ax.set_xticklabels(xticklabels)
+                else:
+                    print('You should specify x ticks manually.')
                 if has_light_line:
-                    plt.fill_between(range(len(mpb.kmag)), mpb.kmag, 1, alpha=0.5, facecolor='gray', edgecolor='black')
+                    plt.fill_between(range(len(mpb.kmag)), mpb.kmag, 1, alpha=1.0, facecolor='gray', edgecolor='black', zorder=3)
                     # plt.plot(range(len(mpb.kmag)), mpb.kmag)
             else:
                 # plt.plot(mpb.kmag, mpb.freqs[:, band], '-b', linewidth=lw)
                 plt.plot(mpb.kmag, mpb.freqs[:, band])
                 if has_light_line:
-                    plt.fill_between(mpb.kmag, mpb.kmag, 1, alpha=0.5, facecolor='gray', edgecolor='black')
+                    plt.fill_between(mpb.kmag, mpb.kmag, 1, alpha=1.0, facecolor='gray', edgecolor='black', zorder=3)
                     # plt.plot(mpb.kmag, mpb.kmag)
 
         if kindex_plot_flag:
@@ -75,7 +81,7 @@ def plotbands(mpb, bandlist=None, lw=1, xticks=None, xticklabels=None,
                     # ax.set_xticks((10, 20))
                     # ax.set_xticklabels(['Hi', 'Bye'])
                 if has_light_line:
-                    plt.fill_between(range(len(mpb.kmag)), mpb.kmag, 1, alpha=0.5, facecolor='gray', edgecolor='black')
+                    plt.fill_between(range(len(mpb.kmag)), mpb.kmag, 1, alpha=1.0, facecolor='gray', edgecolor='black', zorder=3)
                     # plt.plot(range(len(mpb.kmag)), mpb.kmag)
 
             else:
@@ -83,7 +89,7 @@ def plotbands(mpb, bandlist=None, lw=1, xticks=None, xticklabels=None,
                 # plt.tick_params(labelsize=ftsize)
                 plt.plot(mpb.kmag, mpb.freqs[:, band], color='b')
                 if has_light_line:
-                    plt.fill_between(mpb.kmag, mpb.kmag, 1, alpha=0.5, facecolor='gray', edgecolor='black')
+                    plt.fill_between(mpb.kmag, mpb.kmag, 1, alpha=1.0, facecolor='gray', edgecolor='black', zorder=3)
                     # plt.plot(mpb.kmag, mpb.kmag)
 
         if kindex_plot_flag:
@@ -108,6 +114,7 @@ def plotfields(mpb, field_type, kindex=None, band=None, comp=None, mpbpostproces
                      has been performed using mpb-data
     field_type : 'e', 'epsilon', 'epsilon-ft'
     plot_options : specifies extra plot options such as axes limits
+    comp: 'x', 'y', 'z'. Only rectangular coordinates for now
     """
 
     if figsize is not None:
@@ -138,7 +145,7 @@ def plotfields(mpb, field_type, kindex=None, band=None, comp=None, mpbpostproces
                 # plt.contourf(xgrid, ygrid, E2grid)
                 # plt.pcolormesh(E2grid)
                 plt.imshow(E2grid)
-                plt.colorbar()
+                plt.colorbar(label=r'$|\mathbf{E}|^2$')
                 # plt.contour(xgrid, ygrid, epsilon_grid, colors='k', linewidths=lw)
                 plt.contour(epsilon_grid, colors='w', **epsilon_contour_options)
                 ax = plt.gca()
@@ -153,7 +160,7 @@ def plotfields(mpb, field_type, kindex=None, band=None, comp=None, mpbpostproces
                 # plt.contourf(xgrid, ygrid, E2)
                 # plt.pcolormesh(E2)
                 plt.imshow(E2)
-                plt.colorbar()
+                plt.colorbar(label=r'$|\mathbf{E}|^2$')
                 # plt.contour(xgrid, ygrid, epsilon.dset, colors='k', linewidths=lw)
                 plt.contour(epsilon.dset, colors='w', **epsilon_contour_options)
                 ax = plt.gca()
@@ -172,7 +179,7 @@ def plotfields(mpb, field_type, kindex=None, band=None, comp=None, mpbpostproces
                 # ASSUME SLAB GEOMETRY
                 # xy cross section
                 plt.imshow(E2[:, :, E2.shape[2]/2], aspect='equal')
-                plt.colorbar()
+                plt.colorbar(label=r'$|\mathbf{E}|^2$')
                 plt.contour(epsilon.dset[:, :, epsilon.dset.shape[2]/2], colors='w', **epsilon_contour_options)
                 ax = plt.gca()
                 ax.set_xticks(())
@@ -186,6 +193,40 @@ def plotfields(mpb, field_type, kindex=None, band=None, comp=None, mpbpostproces
                 else:
                     plt.xlim(0, E2.shape[1]-1)
                     plt.ylim(0, E2.shape[0]-1)
+        else:
+            if comp == 'x':
+                E_comp2 = np.abs(E.x)**2
+            elif comp == 'y':
+                E_comp2 = np.abs(E.y)**2
+            elif comp == 'z':
+                E_comp2 = np.abs(E.z)**2
+            else:
+                raise('Invalid component entered. x,y,z are valid options')
+
+            if E_comp2.ndim == 1:
+                pass
+            elif E_comp2.ndim == 2:
+                pass
+            elif E_comp2.ndim == 3:
+                # ASSUME SLAB GEOMETRY
+                # xy cross section
+                plt.imshow(E_comp2[:, :, E_comp2.shape[2]/2], aspect='equal')
+                plt.colorbar(label=r'$|\mathbf{E}|^2$')
+                plt.contour(epsilon.dset[:, :, epsilon.dset.shape[2]/2], colors='w', **epsilon_contour_options)
+                ax = plt.gca()
+                ax.set_xticks(())
+                ax.set_yticks(())
+
+                # Determine which grid is on the axis. If Ny > Nx, the yindices
+                # are placed on the x-axis
+                if E_comp2.shape[0] >= E_comp2.shape[1]:
+                    plt.xlim(0, E_comp2.shape[0]-1)
+                    plt.ylim(0, E_comp2.shape[1]-1)
+                else:
+                    plt.xlim(0, E_comp2.shape[1]-1)
+                    plt.ylim(0, E_comp2.shape[0]-1)
+
+
 
     elif field_type == 'epsilon':
         if len(epsilon.dset.shape) == 1:
@@ -195,7 +236,7 @@ def plotfields(mpb, field_type, kindex=None, band=None, comp=None, mpbpostproces
             (xgrid, ygrid) = np.meshgrid(x, x)
             # plt.pcolormesh(xgrid, ygrid, epsilon_grid, cmap='Greys')
             plt.imshow(epsilon_grid, cmap='Greys')
-            plt.colorbar()
+            plt.colorbar(label=r'$\varepsilon$')
             ax = plt.gca()
             ax.set_xticks(())
             ax.set_yticks(())
@@ -212,7 +253,7 @@ def plotfields(mpb, field_type, kindex=None, band=None, comp=None, mpbpostproces
             # epsilon_ft[np.unravel_index(np.argmax(epsilon_ft), np.shape(epsilon_ft))] = 0
 
             plt.imshow(epsilon.dset, cmap='Greys')
-            plt.colorbar()
+            plt.colorbar(label=r'$\varepsilon$')
             plt.xlim(0, epsilon.dset.shape[0]-1)
             plt.ylim(0, epsilon.dset.shape[1]-1)
             ax = plt.gca()
@@ -223,11 +264,11 @@ def plotfields(mpb, field_type, kindex=None, band=None, comp=None, mpbpostproces
             # ASSUME PC SLAB GEOMETRY ONLY
             # plot in middle of slab
             # xy cross section
-            # plt.imshow(epsilon.dset[:, :, epsilon.dset.shape[2]/2], cmap='Greys', aspect='equal')
+            plt.imshow(epsilon.dset[:, :, epsilon.dset.shape[2]/2], cmap='Greys', aspect='equal')
             # yz cross section
             # plt.imshow(epsilon.dset[epsilon.dset.shape[0]/2, :, :], cmap='Greys', aspect='equal')
-            plt.imshow(epsilon.dset[0, :, :], cmap='Greys', aspect='equal')
-            plt.colorbar()
+            # plt.imshow(epsilon.dset[0, :, :], cmap='Greys', aspect='equal')
+            plt.colorbar(label=r'$\varepsilon$')
             # plt.xlim(0, epsilon.dset.shape[0]-1)
             # plt.ylim(0, epsilon.dset.shape[1]-1)
             ax = plt.gca()
@@ -293,7 +334,7 @@ def plotvg(mpb, bandlist=None, lw=1, xticks=None, xticklabels=None,
             plt.plot(mpb.kmag, mpb.vgmag[:, band])
 
         if has_light_line:
-            plt.fill_between(range(len(mpb.kmag)), mpb.kmag, 1, alpha=0.5, facecolor='gray', edgecolor='black')
+            plt.fill_between(range(len(mpb.kmag)), mpb.kmag, 1, alpha=1.0, facecolor='gray', edgecolor='black')
 
         if kindex_plot_flag:
             plt.xlim(0, len(mpb.freqs[:, band])-1)
@@ -326,7 +367,7 @@ def plotvg(mpb, bandlist=None, lw=1, xticks=None, xticklabels=None,
                 # plt.tick_params(labelsize=ftsize)
                 plt.plot(mpb.kmag, mpb.freqs[:, band], color='b')
         if has_light_line:
-            plt.fill_between(range(len(mpb.kmag)), mpb.kmag, 1, alpha=0.5, facecolor='gray', edgecolor='black')
+            plt.fill_between(range(len(mpb.kmag)), mpb.kmag, 1, alpha=1.0, facecolor='gray', edgecolor='black')
 
         if kindex_plot_flag:
             plt.xlim(0, len(mpb.vgmag[:, band])-1)

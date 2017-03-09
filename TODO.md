@@ -18,6 +18,8 @@
 - [ ] 3D epsilon cross section
 
 ## Completed
+- [x] use zorder and alpha to make stuff above light line opaque
+- [x] plot x,y,z comps of fields in 3D
 - [x] start writing tutorial using Ipython notebook
 - [x] add epsilon fourier transform plot in plotfields
 - [x] add misc_plotting_utilities that contains fourier tranform and other helper
